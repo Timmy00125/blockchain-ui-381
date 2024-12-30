@@ -1,0 +1,81 @@
+<mat-card class="blockchain-card">
+      <mat-card-header>
+        <mat-card-title>Blockchain Explorer</mat-card-title>
+      </mat-card-header>
+      
+      <mat-card-content>
+        <mat-tab-group>
+          <mat-tab label="Blocks">
+            <mat-accordion>
+              <mat-expansion-panel *ngFor="let block of blocks">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    Block #{{block.index}}
+                  </mat-panel-title>
+                  <mat-panel-description>
+                    Hash: {{block.hash.substring(0, 20)}}...
+                  </mat-panel-description>
+                </mat-expansion-panel-header>
+
+                <div class="block-details">
+                  <p><strong>Timestamp:</strong> {{block.timestamp | date:'medium'}}</p>
+                  <p><strong>Previous Hash:</strong> {{block.previousBlockHash}}</p>
+                  <p><strong>Nonce:</strong> {{block.nonce}}</p>
+                  
+                  <h4>Transactions</h4>
+                  <mat-table [dataSource]="getTransactionDataSource(block.transactions)">
+                    <ng-container matColumnDef="sender">
+                      <mat-header-cell *matHeaderCellDef>Sender</mat-header-cell>
+                      <mat-cell *matCellDef="let transaction">{{transaction.sender}}</mat-cell>
+                    </ng-container>
+
+                    <ng-container matColumnDef="recipient">
+                      <mat-header-cell *matHeaderCellDef>Recipient</mat-header-cell>
+                      <mat-cell *matCellDef="let transaction">{{transaction.recipient}}</mat-cell>
+                    </ng-container>
+
+                    <ng-container matColumnDef="amount">
+                      <mat-header-cell *matHeaderCellDef>Amount</mat-header-cell>
+                      <mat-cell *matCellDef="let transaction">{{transaction.amount}}</mat-cell>
+                    </ng-container>
+
+                    <mat-header-row *matHeaderRowDef="['sender', 'recipient', 'amount']"></mat-header-row>
+                    <mat-row *matRowDef="let row; columns: ['sender', 'recipient', 'amount']"></mat-row>
+                  </mat-table>
+                </div>
+              </mat-expansion-panel>
+            </mat-accordion>
+          </mat-tab>
+
+          <mat-tab label="New Transaction">
+            <form [formGroup]="transactionForm" (ngSubmit)="createTransaction()" class="transaction-form">
+              <mat-form-field appearance="fill">
+                <mat-label>Sender Address</mat-label>
+                <input matInput formControlName="sender">
+              </mat-form-field>
+
+              <mat-form-field appearance="fill">
+                <mat-label>Recipient Address</mat-label>
+                <input matInput formControlName="recipient">
+              </mat-form-field>
+
+              <mat-form-field appearance="fill">
+                <mat-label>Amount</mat-label>
+                <input matInput type="number" formControlName="amount">
+              </mat-form-field>
+
+              <button mat-raised-button color="primary" type="submit" [disabled]="!transactionForm.valid">
+                Send Transaction
+              </button>
+            </form>
+          </mat-tab>
+        </mat-tab-group>
+
+        <div class="mining-controls">
+          <button mat-raised-button color="accent" (click)="mineBlock()" [disabled]="mining">
+            <mat-icon>account_balance</mat-icon>
+            {{mining ? 'Mining...' : 'Mine New Block'}}
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
