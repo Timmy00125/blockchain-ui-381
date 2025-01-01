@@ -12,56 +12,30 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms';
 
+import {
+  interval,
+  Subject,
+  Subscription,
+  Observable,
+  finalize,
+  takeUntil,
+  timer,
+} from 'rxjs';
 import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
-import { MatTabsModule } from '@angular/material/tabs';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { MatTableModule } from '@angular/material/table';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { Observable } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
-
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatChipsModule } from '@angular/material/chips';
-import { interval, Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-blockchain-viewer',
   standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    MatCardModule,
-    MatTabsModule,
-    MatExpansionModule,
-    MatTableModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
-    MatDividerModule,
-    MatChipsModule,
-  ],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './blockchain-viewer.component.html',
   styleUrl: './blockchain-viewer.component.css',
-  // providers: [BlockchainService],
 })
 export class BlockchainViewerComponent implements OnInit {
-  // constructor(
-  //   private blockchainService: BlockchainService,
-  //   private fb: FormBuilder,
-  //   private snackBar: MatSnackBar
-  // ) {}
-
   private fb = inject(FormBuilder);
   private blockchainService = inject(BlockchainService);
   private snackBar = inject(MatSnackBar);
-  // private cdr = inject(ChangeDetectorRef);
+  private refreshSubscription?: Subscription;
 
   // Subject for handling component cleanup
   private destroy$ = new Subject<void>();
@@ -77,7 +51,7 @@ export class BlockchainViewerComponent implements OnInit {
     this.loadBlockchain();
   }
 
-  ngOnDestroy(): void {}
+  ngOnDestroy() {}
 
   loadBlockchain() {
     this.blockchainService.getBlockchain().subscribe(
@@ -129,20 +103,23 @@ export class BlockchainViewerComponent implements OnInit {
 
   mineBlock() {
     this.mining = true;
-    this.blockchainService.mineBlock().subscribe(
-      (response) => {
-        this.snackBar.open('Block mined successfully', 'Close', {
-          duration: 3000,
-        });
-        this.loadBlockchain();
-        this.mining = false;
-        // this.cdr.detectChanges(); // Trigger change detection to update the UI
-      },
-      (error) => {
-        this.snackBar.open('Error mining block', 'Close', { duration: 3000 });
-        this.mining = false;
-        // this.cdr.detectChanges(); // Trigger change detection to update the UI
-      }
-    );
+    this.blockchainService
+      .mineBlock()
+      .pipe(
+        finalize(() => (this.mining = false)) // Ensure mining flag is always reset
+      )
+      .subscribe(
+        (response) => {
+          this.snackBar.open('Block mined successfully', 'Close', {
+            duration: 3000,
+          });
+          this.loadBlockchain(); // Crucial: Refresh the blockchain data
+        },
+        (error) => {
+          console.error('Mining error:', error); // Log the actual error for debugging
+          // this.snackBar.open('Error mining block', 'Close', { duration: 3000 });
+        }
+      );
   }
+  selectedTab: string = 'blocks'; // Default to Blocks tab
 }

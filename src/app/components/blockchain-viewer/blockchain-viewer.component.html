@@ -1,81 +1,134 @@
-<mat-card class="blockchain-card">
-      <mat-card-header>
-        <mat-card-title>Blockchain Explorer</mat-card-title>
-      </mat-card-header>
-      
-      <mat-card-content>
-        <mat-tab-group>
-          <mat-tab label="Blocks">
-            <mat-accordion>
-              <mat-expansion-panel *ngFor="let block of blocks">
-                <mat-expansion-panel-header>
-                  <mat-panel-title>
-                    Block #{{block.index}}
-                  </mat-panel-title>
-                  <mat-panel-description>
-                    Hash: {{block.hash.substring(0, 20)}}...
-                  </mat-panel-description>
-                </mat-expansion-panel-header>
+<div class="min-h-screen bg-gray-900 text-gray-200 flex flex-col items-center p-6">
+  <div class="w-full max-w-6xl">
+    <!-- Card Header -->
+    <div class="bg-gray-800 rounded-t-lg p-4 shadow-md">
+      <h1 class="text-2xl font-bold text-blue-400">Blockchain Explorer</h1>
+    </div>
 
-                <div class="block-details">
-                  <p><strong>Timestamp:</strong> {{block.timestamp | date:'medium'}}</p>
-                  <p><strong>Previous Hash:</strong> {{block.previousBlockHash}}</p>
-                  <p><strong>Nonce:</strong> {{block.nonce}}</p>
-                  
-                  <h4>Transactions</h4>
-                  <mat-table [dataSource]="getTransactionDataSource(block.transactions)">
-                    <ng-container matColumnDef="sender">
-                      <mat-header-cell *matHeaderCellDef>Sender</mat-header-cell>
-                      <mat-cell *matCellDef="let transaction">{{transaction.sender}}</mat-cell>
-                    </ng-container>
+    <!-- Tabs -->
+    <div class="bg-gray-800 rounded-b-lg shadow-md">
+      <div class="flex border-b border-gray-700">
+        <button
+          class="flex-1 text-center py-3 px-4 font-medium text-blue-400 border-b-2 border-blue-500"
+          (click)="selectedTab = 'blocks'"
+        >
+          Blocks
+        </button>
+        <button
+          class="flex-1 text-center py-3 px-4 font-medium text-gray-400 hover:text-blue-400"
+          (click)="selectedTab = 'newTransaction'"
+        >
+          New Transaction
+        </button>
+      </div>
 
-                    <ng-container matColumnDef="recipient">
-                      <mat-header-cell *matHeaderCellDef>Recipient</mat-header-cell>
-                      <mat-cell *matCellDef="let transaction">{{transaction.recipient}}</mat-cell>
-                    </ng-container>
+      <!-- Blocks Section -->
+      <div class="p-6">
+        <div class="space-y-6">
+          <!-- Single Block -->
+          <div
+            *ngFor="let block of blocks"
+            class="bg-gray-700 rounded-lg p-4 shadow-md"
+          >
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-semibold">Block #{{ block.index }}</h2>
+              <div class="text-sm text-gray-400">
+                <span class="font-bold">Hash:</span>
+                <code>{{ block.hash.substring(0, 20) }}...</code>
+              </div>
+            </div>
 
-                    <ng-container matColumnDef="amount">
-                      <mat-header-cell *matHeaderCellDef>Amount</mat-header-cell>
-                      <mat-cell *matCellDef="let transaction">{{transaction.amount}}</mat-cell>
-                    </ng-container>
+            <div class="space-y-2 text-sm">
+              <p><strong>Timestamp:</strong> {{ block.timestamp | date: 'medium' }}</p>
+              <p><strong>Previous Hash:</strong> <code>{{ block.previousBlockHash }}</code></p>
+              <p><strong>Nonce:</strong> {{ block.nonce }}</p>
+            </div>
 
-                    <mat-header-row *matHeaderRowDef="['sender', 'recipient', 'amount']"></mat-header-row>
-                    <mat-row *matRowDef="let row; columns: ['sender', 'recipient', 'amount']"></mat-row>
-                  </mat-table>
+            <!-- Transactions -->
+            <div *ngIf="block.transactions.length" class="mt-4">
+              <h3 class="text-blue-400 font-medium mb-2">Transactions</h3>
+              <div class="bg-gray-800 rounded-md overflow-hidden">
+                <div
+                  *ngFor="let transaction of block.transactions"
+                  class="flex justify-between px-4 py-2 border-b border-gray-700 last:border-none"
+                >
+                  <span>Sender: <code>{{ transaction.sender }}</code></span>
+                  <span>Recipient: <code>{{ transaction.recipient }}</code></span>
+                  <span>Amount: {{ transaction.amount }}</span>
                 </div>
-              </mat-expansion-panel>
-            </mat-accordion>
-          </mat-tab>
-
-          <mat-tab label="New Transaction">
-            <form [formGroup]="transactionForm" (ngSubmit)="createTransaction()" class="transaction-form">
-              <mat-form-field appearance="fill">
-                <mat-label>Sender Address</mat-label>
-                <input matInput formControlName="sender">
-              </mat-form-field>
-
-              <mat-form-field appearance="fill">
-                <mat-label>Recipient Address</mat-label>
-                <input matInput formControlName="recipient">
-              </mat-form-field>
-
-              <mat-form-field appearance="fill">
-                <mat-label>Amount</mat-label>
-                <input matInput type="number" formControlName="amount">
-              </mat-form-field>
-
-              <button mat-raised-button color="primary" type="submit" [disabled]="!transactionForm.valid">
-                Send Transaction
-              </button>
-            </form>
-          </mat-tab>
-        </mat-tab-group>
-
-        <div class="mining-controls">
-          <button mat-raised-button color="accent" (click)="mineBlock()" [disabled]="mining">
-            <mat-icon>account_balance</mat-icon>
-            {{mining ? 'Mining...' : 'Mine New Block'}}
-          </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </mat-card-content>
-    </mat-card>
+      </div>
+
+      <!-- New Transaction Section -->
+      <!-- <div class="p-6 hidden"> -->
+        <div class="p-6" *ngIf="selectedTab === 'newTransaction'">
+        <form [formGroup]="transactionForm" (ngSubmit)="createTransaction()" class="space-y-4">
+          <div class="space-y-2">
+            <label for="sender" class="block text-sm font-medium">Sender Address</label>
+            <input
+              id="sender"
+              type="text"
+              formControlName="sender"
+              class="w-full p-2 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              placeholder="Enter sender's address"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label for="recipient" class="block text-sm font-medium">Recipient Address</label>
+            <input
+              id="recipient"
+              type="text"
+              formControlName="recipient"
+              class="w-full p-2 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              placeholder="Enter recipient's address"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label for="amount" class="block text-sm font-medium">Amount</label>
+            <input
+              id="amount"
+              type="number"
+              formControlName="amount"
+              class="w-full p-2 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              placeholder="Enter amount"
+            />
+          </div>
+
+          <div class="flex justify-end space-x-4">
+            <button
+              type="button"
+              (click)="transactionForm.reset()"
+              class="px-4 py-2 rounded-md bg-gray-600 hover:bg-gray-500 text-white"
+            >
+              Clear
+            </button>
+            <button
+              type="submit"
+              [disabled]="!transactionForm.valid"
+              class="px-4 py-2 rounded-md bg-blue-500 hover:bg-blue-400 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Send Transaction
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mining Controls -->
+  <div class="mt-6">
+    <button
+      (click)="mineBlock()"
+      [disabled]="mining"
+      class="px-6 py-3 rounded-md bg-blue-500 hover:bg-blue-400 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {{ mining ? 'Mining...' : 'Mine New Block' }}
+    </button>
+  </div>
+  
+</div>
