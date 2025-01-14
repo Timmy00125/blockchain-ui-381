@@ -39,6 +39,7 @@ export class BlockchainViewerComponent implements OnInit, OnDestroy {
   blocks: Block[] = [];
   mining = false;
   transactionInProgress = false;
+  selectedTab: string = 'blocks';
 
   transactionForm = this.fb.group({
     sender: ['', Validators.required],
