@@ -11,7 +11,6 @@ import {
   FormGroup,
   ReactiveFormsModule,
 } from '@angular/forms';
-
 import {
   interval,
   Subject,
@@ -31,16 +30,16 @@ import { MatSnackBar } from '@angular/material/snack-bar';
   templateUrl: './blockchain-viewer.component.html',
   styleUrl: './blockchain-viewer.component.css',
 })
-export class BlockchainViewerComponent implements OnInit {
+export class BlockchainViewerComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private blockchainService = inject(BlockchainService);
   private snackBar = inject(MatSnackBar);
-  private refreshSubscription?: Subscription;
-
-  // Subject for handling component cleanup
   private destroy$ = new Subject<void>();
+
   blocks: Block[] = [];
   mining = false;
+  transactionInProgress = false;
+
   transactionForm = this.fb.group({
     sender: ['', Validators.required],
     recipient: ['', Validators.required],
@@ -51,53 +50,65 @@ export class BlockchainViewerComponent implements OnInit {
     this.loadBlockchain();
   }
 
-  ngOnDestroy() {}
-
-  loadBlockchain() {
-    this.blockchainService.getBlockchain().subscribe(
-      (data) => {
-        this.blocks = data.chain;
-      },
-      (error) => {
-        this.snackBar.open('Error loading blockchain', 'Close', {
-          duration: 3000,
-        });
-      }
-    );
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
-  getTransactionDataSource(transactions: Transaction[]) {
-    return new MatTableDataSource(transactions);
+  loadBlockchain() {
+    this.blockchainService
+      .getBlockchain()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data) => {
+          this.blocks = data.chain;
+        },
+        error: (error) => {
+          console.error('Error loading blockchain:', error);
+          this.snackBar.open('Error loading blockchain', 'Close', {
+            duration: 3000,
+          });
+        },
+      });
   }
 
   createTransaction() {
-    if (this.transactionForm.valid) {
-      // We'll create a properly typed transaction object from the form values
+    if (this.transactionForm.valid && !this.transactionInProgress) {
+      this.transactionInProgress = true;
       const formValues = this.transactionForm.value;
 
-      // Create a transaction object with type checking
       const transaction: Transaction = {
-        // Use the nullish coalescing operator to provide default values
-        amount: formValues.amount ?? 0,
-        sender: formValues.sender ?? '',
-        recipient: formValues.recipient ?? '',
+        amount: Number(formValues.amount) || 0,
+        sender: formValues.sender || '',
+        recipient: formValues.recipient || '',
       };
 
-      // Now we can safely pass the transaction to our service
-      this.blockchainService.createTransaction(transaction).subscribe(
-        (response) => {
-          this.snackBar.open('Transaction created successfully', 'Close', {
-            duration: 3000,
-          });
-          this.transactionForm.reset();
-          this.loadBlockchain();
-        },
-        (error) => {
-          this.snackBar.open('Error creating transaction', 'Close', {
-            duration: 3000,
-          });
-        }
-      );
+      this.blockchainService
+        .createTransaction(transaction)
+        .pipe(
+          takeUntil(this.destroy$),
+          finalize(() => (this.transactionInProgress = false))
+        )
+        .subscribe({
+          next: (response) => {
+            console.log('Transaction response:', response); // For debugging
+            this.snackBar.open('Transaction created successfully', 'Close', {
+              duration: 3000,
+            });
+            this.transactionForm.reset();
+            this.loadBlockchain();
+          },
+          error: (error) => {
+            console.error('Transaction error:', error);
+            this.snackBar.open('Error creating transaction', 'Close', {
+              duration: 3000,
+            });
+          },
+        });
+    } else if (!this.transactionForm.valid) {
+      this.snackBar.open('Please fill all required fields correctly', 'Close', {
+        duration: 3000,
+      });
     }
   }
 
@@ -106,20 +117,26 @@ export class BlockchainViewerComponent implements OnInit {
     this.blockchainService
       .mineBlock()
       .pipe(
-        finalize(() => (this.mining = false)) // Ensure mining flag is always reset
+        takeUntil(this.destroy$),
+        finalize(() => (this.mining = false))
       )
-      .subscribe(
-        (response) => {
+      .subscribe({
+        next: (response) => {
           this.snackBar.open('Block mined successfully', 'Close', {
             duration: 3000,
           });
-          this.loadBlockchain(); // Crucial: Refresh the blockchain data
+          this.loadBlockchain();
         },
-        (error) => {
-          console.error('Mining error:', error); // Log the actual error for debugging
-          // this.snackBar.open('Error mining block', 'Close', { duration: 3000 });
-        }
-      );
+        error: (error) => {
+          console.error('Mining error:', error);
+          this.snackBar.open('Error mining block', 'Close', {
+            duration: 3000,
+          });
+        },
+      });
   }
-  selectedTab: string = 'blocks'; // Default to Blocks tab
+
+  getTransactionDataSource(transactions: Transaction[]) {
+    return new MatTableDataSource(transactions);
+  }
 }

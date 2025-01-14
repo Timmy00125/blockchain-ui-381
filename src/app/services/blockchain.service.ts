@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 export interface Transaction {
   amount: number;
@@ -29,8 +30,11 @@ export class BlockchainService {
     return this.http.get(`${this.apiUrl}/blockchain`);
   }
 
-  createTransaction(transaction: Transaction): Observable<any> {
-    return this.http.post(`${this.apiUrl}/transaction`, transaction);
+  createTransaction(transaction: Transaction): Observable<string> {
+    // Specify responseType as text since the endpoint returns a string
+    return this.http.post(`${this.apiUrl}/transaction`, transaction, {
+      responseType: 'text',
+    });
   }
 
   mineBlock(): Observable<any> {
